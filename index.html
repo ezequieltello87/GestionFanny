@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Interno - Minimarket</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col items-center p-3 sm:p-6">
+
+    <!-- Encabezado -->
+    <header class="w-full max-w-md bg-white shadow-sm border border-slate-200 rounded-2xl p-4 mb-4 text-center">
+        <h1 class="text-xl font-bold text-slate-900 flex items-center justify-center gap-2">
+            <span>🛒</span> Control Minimarket
+        </h1>
+        <p class="text-xs text-slate-500 mt-0.5">Sistema interno de registros</p>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main class="w-full max-w-md bg-white shadow-md border border-slate-200 rounded-2xl p-5">
+        
+        <!-- Pestañas -->
+        <div class="flex border-b border-slate-200 mb-5 text-sm font-semibold">
+            <button onclick="cambiarTab('vencimientos')" id="btn-vencimientos" class="flex-1 pb-2.5 border-b-2 border-emerald-600 text-emerald-600 text-center transition-all">
+                Vencimientos
+            </button>
+            <button onclick="cambiarTab('faltantes')" id="btn-faltantes" class="flex-1 pb-2.5 border-b-2 border-transparent text-slate-400 text-center transition-all hover:text-slate-600">
+                Faltantes
+            </button>
+            <button onclick="cambiarTab('horas')" id="btn-horas" class="flex-1 pb-2.5 border-b-2 border-transparent text-slate-400 text-center transition-all hover:text-slate-600">
+                Horas
+            </button>
+        </div>
+
+        <!-- 🟢 SECCIÓN 1: VENCIMIENTOS -->
+        <section id="tab-vencimientos" class="space-y-4">
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-emerald-900 text-xs">
+                📌 Registrá los productos con fecha límite para priorizar su exhibición o descuento.
+            </div>
+
+            <form id="form-vencimientos" onsubmit="guardarVencimiento(event)" class="space-y-4">
+                <div class="relative">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Producto</label>
+                    <input type="text" id="v-producto" list="lista-productos" autocomplete="off" required placeholder="Escribí para buscar producto..." 
+                           class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    
+                    <datalist id="lista-productos"></datalist>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Fecha Vencimiento</label>
+                        <input type="date" id="v-fecha" required 
+                               class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Cantidad</label>
+                        <input type="number" id="v-cantidad" min="1" required placeholder="Ej: 6" 
+                               class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
+                    </div>
+                </div>
+
+                <!-- Botones en la misma solapa -->
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold py-3 px-2 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 text-center">
+                        Guardar Vencimiento
+                    </button>
+                    <button type="button" onclick="abrirModalLista()" class="bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-700 font-bold py-3 px-2 rounded-xl text-xs transition-all border border-slate-300 flex items-center justify-center gap-1.5">
+                        <span>📋</span> Ver Registrados (<span id="badge-contador">0</span>)
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- 🟠 SECCIÓN 2: FALTANTES -->
+        <section id="tab-faltantes" class="space-y-4 hidden">
+            <p class="text-xs text-slate-500 text-center py-4">Próximamente configuraremos Faltantes...</p>
+        </section>
+
+        <!-- 🔵 SECCIÓN 3: HORAS -->
+        <section id="tab-horas" class="space-y-4 hidden">
+            <p class="text-xs text-slate-500 text-center py-4">Próximamente configuraremos Horas...</p>
+        </section>
+
+    </main>
+
+    <!-- Modal Emergente para Ver Registros del Sheet -->
+    <div id="modal-lista" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 border border-slate-200">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                    <span>📋</span> Vencimientos en Google Sheet
+                </h3>
+                <button onclick="cerrarModalLista()" class="text-slate-400 hover:text-slate-600 font-bold text-sm px-2 py-1 rounded-lg">
+                    ✕
+                </button>
+            </div>
+            
+            <div id="contenedor-lista" class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                <!-- Se llena dinámicamente desde el Sheet -->
+            </div>
+
+            <button onclick="cerrarModalLista()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs transition-all">
+                Cerrar
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 opacity-0 pointer-events-none transition-all duration-300 z-50">
+        <span id="toast-icon">✅</span>
+        <span id="toast-mensaje">Registro guardado</span>
+    </div>
+
+    <!-- Lógica JavaScript -->
+    <script>
+        const URL_SCRIPT = 'https://script.google.com/macros/s/AKfycbxg-qv1u5-WdKtUGijIsFpG9s_KIW2mSGQQwskEvbLPcURzCRWTOW-9GZ1XVEfBQB-v/exec';
+
+        const productosBase = [
+            "7 SEMILLAS HORGARENAS", "7UP LATA", "9 DE ORO BRIGITTE LIMON Y VAINILLA", "9 DE ORO CARA SUCIA",
+            "ACEITE ALZAMAR 900", "ACEITE NATURA", "ACEITE ZANONI", "ACEITUNAS NEGRAS", "ACEITUNAS NEGRAS EL ANFITRION",
+            "ACEITUNAS VERDES EL ANFITRION", "ACONDICIONADOR PLUSBELLE", "ADES FRUTAS TROPICALES 1000", "ADES MANZANA 1000",
+            "ADES NARANJA 1000", "AGUA CON GAS VILLAVICENCIO", "AGUA SABORIZADA BAGGIO VIDA", "ALA CREMOSO FLORES BLANCAS",
+            "ALA CREMOSO LIMON", "ALARIS MALBEC", "ALCOHOL ETILICO", "ALCOHOL SAN IGINIO 250CC", "ALEM LINO Y CHIA",
+            "ALF FULBITO BLACK", "ALF MILKA OREO TORTA 61G", "ALF NEGRO QUENTO", "ALF SHOT BLANCO", "ALF TRIPLE PEPITOS 57G",
+            "ALF TRIPLE SHOT 60G", "ALFAJOR CHOCOTORTA", "ALFAJOR DUBAI NEGRO BLUE LABEL", "ALFAJOR ELIXIR BLANCO SIMPLE",
+            "ALFAJOR FULBITO CHOCOLATE", "ALFAJOR FULBITO MANI", "ALFAJOR MARLEY SIMPLE BLANCO", "ALFAJOR MARLEY SIMPLE NEGRO",
+            "ALFAJOR MARLEY TRIPLE BLANCO", "ALFAJOR MARLEY TRIPLE NEGRO", "ALFAJOR MILKA SUPER DDL BLANCO", "ALFAJOR MINI TORTA DARK",
+            "ALFAJOR OREO", "ALFAJOR SIN TAC DULCE DE", "ALFAJOR TATIN CHOCOLATE", "ALFAJOR TATIN TRIPLE CHOCOLATE",
+            "ALFAJOR TERRABUSI BLANCO", "ALFAJOR TOFI TRIPLE CHOCOLATE", "ALFAJOR TRISHOT BCO", "ALFAJORCITOS DE CHOCOLATE DEUBEL",
+            "ALGODON ESTRELLA SUPER", "ALMA MORA CHARDONNAY", "ALWAYS XTRA SUEVE", "ANDES IPA 1L", "ANDES ORO RUBIA SUAVE 1L",
+            "ANDES ROJA 1L", "APEROL 750", "AQUARIUS LIMONADA 15", "AQUARIUS LIMONADA 500", "AQUARIUS MANZANA 1 500",
+            "AQUARIUS MANZANA 500", "AQUARIUS NARANJA 1 500", "AQUARIUS NARANJA 500", "AQUARIUS PERA 1 500", "AQUARIUS PERA 500",
+            "AQUARIUS POMELO 1 500", "AQUARIUS POMELO 500", "AQUARIUS UVA 500", "ARCOR 50 CACAO 100G", "ARCOR DULCE DE LECHE",
+            "ARCOR MILK BARRITAS X4", "ARCOR MILK SORPRESA", "ARITOS FRUTALES GRANIX", "ATUN DESMENUZADO DEL MAR",
+            "AZUCAR ANDINA", "AZUCAR BAITY", "AZUCAR SALVADOR", "BABY DOLL", "BAGGIO DURAZNO 1 L", "BAGGIO MANZANA 1L",
+            "BAGGIO MANZANA 200 ML", "BAGGIO MIX CITRUS", "BAGGIO MULTIFRUTA 1L", "BAGGIO MULTIFRUTAL 200", "BAGGIO NARANJA 1L",
+            "BAGGIO NARANJA 200 ML", "BAGGIO PERA 1L", "BAGGIO PERA 200", "BAGIO DURAZNO 200", "BANANITA DOLCA 30GRS",
+            "BARBACOA DANICA", "BARRA DE CEREAL PROTEICA", "BARRITA INTEGRA AVENA CAJU", "BARRITA INTEGRA PROTEICA",
+            "BATATA 500G", "BATATA CON CHOCOLATE", "BC FRUTILLA LIMON", "BC MIX FRUTAL", "BC NARANJA DURAZNO",
+            "BELDENT MANDARINA", "BELDENT TROPICAL", "BHAHMA LIMON 473", "BICARBONATO", "BIZCOCHITOS ALEM",
+            "BIZCOCHITOS DE QUESO ALEM", "BIZCOCHITOS JORGITO", "BIZCOCHUELO EXQUISITA CHOCOLATE", "BIZCOCHUELO EXQUISITA VAINILLA",
+            "BOCADITO BOMBA IMPERIAL", "BOCADITO DULECH", "BOMBA GULA", "BOMBON COFLER BLOCK", "BON O BON BLANCO",
+            "BON O BON CHOCOLINA", "BON O BON COCO", "BON O BON PISTACHO", "BONAQUA CON GAS 500", "BONAQUA CON GAS 500CC",
+            "BONAQUA S/G 2 500", "BONAQUA SIN GAS 500", "BONOBON LECHE CAJA", "BONOBON TRIPLE NEGRO", "BRAHAMA 1L",
+            "BRAHAMITA 340CC", "BRAHMA POMELO 473", "BUBBALO FRUTILLA", "BUBBALO MENTA", "BUBBALO TUTTI FRUTI", "BUBBALO UVA",
+            "BUDIN LA CUMBRE CON FRUTAS", "BUDIN LA CUMBRE MARMOLADO", "BUDIN LA CUMBRE NARANJA 250 GR", "BUDIN LA CUMBRE VAINILLA",
+            "BUDIN LA CUMBRE VAINILLA Y CARAM.", "BULL DOG REGALIZ SANDIA", "CADBURI ALMENDRA 82G TERRABUSI", "CADBURY INTENSE 25G",
+            "CAFE AL COÑAC TRES PLUMAS", "CAFE MOLIDO LA VIRGINIA", "CAMPARI", "CARAMELO FLYNN PAFF", "CART BELLA PAPEL COCINA",
+            "CARTAS ESPANOLAS ESCOLAZO", "CELOSAS SEMIBANADAS", "CEPITA DURAZNO 1 500", "CEPITA NARANJA 1 500",
+            "CEPITA NARANJA 1000 BOTELLA", "CEPITAL DURAZNO 1000 BOTELLA", "CERAMICOL DOY PACK 450CM", "CEREAL MIX AVENA Y PASAS",
+            "CEREAL MIX CACAO GRANO ENTERO", "CEREAL MIX FRUTILLA GRANO ENTERO", "CEREAL MIX LIGHT MZA", "CEREAL MIX PISTACHO Y MANI",
+            "CEREALITAS AVENA CACAO", "CEREALITAS CLASICA", "CEREALITAS GRANOLA", "CEREALITAS SALVADO", "CERVEZA LATA 361",
+            "CERVEZA LATA ORTUZAR", "CHOCLO CREMOSO AMARILLO INALPA", "CHOCO COOKIES COFLER", "CHOCO NESTLE ALMENDRAS",
+            "CHOCO NESTLE ALMENDRAS 50G", "CHOCO NESTLE SEMI AMARGO 50G", "CHOCOLATADA BAGGIO 7 VIDAS200ML", "CHOCOLATADA ILOLAY 200",
+            "CHOCOLATE AGUILA 60 CACAO", "CHOCOLATE ARCOR BLANCO 95G", "CHOCOLATE ARCOR DUO", "CHOCOLATE CRISPY 80G",
+            "CHOCOLATIN ARCOR BLANCO", "CHOCOLINA 170G", "CHOCOLINAS 250G", "CHOCOLINAS RELLENAS", "CIF CREMA 375G",
+            "CIF VIDRIOS Y MULT 450ML", "CINDOR 200ML", "CINZANO ROSSO", "CLIGHT NARANJA", "CLUB SOCIAL ORIGINAL",
+            "COCA 354ML", "COCA CHIQUITA VIDRIO", "COCA CHIQUITA VIDRIO ZERO", "COCA COCA 500 ZERO", "COCA COLA 1 250 RETORNABLE",
+            "COCA COLA 1 250 ZERO RET", "COCA COLA 1 500", "COCA COLA 1 500 LIGHT", "COCA COLA 1 500 ZERO", "COCA COLA 1000",
+            "COCA COLA 1000 ZERO", "COCA COLA 2 250 NO RET", "COCA COLA 2 250 ZERO", "COCA COLA 2000 RET", "COCA COLA 2000 RET ZERO",
+            "COCA COLA 500", "COFLER CUBANITO DARK", "COLON SELECTO SABOR DURAZNO", "COLON SELECTO SABOR FRUTOS",
+            "COLON TORRONTES VIOGNIER", "CONDIMENTO P/ ARROZ CHEVALIER", "CONFITES BUBBALOO 24G", "CONO COFLER FRU-AME",
+            "CONO ROCKLETS", "CORDERO CON PIEL DE LOBO", "CORDERO CON PIEL DE LOBO MALBEC", "CORONA LATA 410CC",
+            "COSECHA TARDIA BALCNO DULCE", "COTAR ENTERA SACHET", "CREMA DE LECHE 360", "CUBANITOS OBLITA MARROC",
+            "CUNINGTON LIMA LIMON", "CUNNIGTON LIMON 2,25", "CUNNINGTON NARANJA 1,5", "CYNAR", "D.R.F ANIS", "D.R.F MENTOL",
+            "D.R.F NARANJA", "DADA PASION MARACUYA", "DANETTE CHOCOLATE X1", "DANICA DORADA", "DENTIFRICO CLOSE UP",
+            "DENTIFRICO KOLINOS 70GR", "DESODORANTE AXE BLACK", "DESODORANTE AXE DARK TEMTATION", "DESODORANTE AXE GOLD",
+            "DESODORANTE POET ESPIRITU PLAY", "DESODORANTE REXONA", "DON SATUR DULCES", "DON VALENTIN LACRADO", "DORITOS 40G",
+            "DOS CORAZONES", "DR LEMON CON VODKA", "DULCE DE LECHE TREMBLAR 250G", "DULCE DE LECHE TREMBLAY 400G", "DUQUESA",
+            "DURAZNO ALCYONE", "EDULCORANTE SI DIET", "EL NAUFRAGO", "ENCENDEDOR HYPER", "ESCENCIA DE VAINILLA BARBERA",
+            "ESPECIES SURTIDAS CHEVALIER", "ESPONJA DE ACERO", "ESPONJA DE ACERO DORADA", "ESPUMITA FANTOCHE", "ESTRELLA CERVEZA",
+            "FANTA 1 500", "FANTA 354", "FANTA 500", "FANTA CHIQUITA VIDRIO", "FANTOCHE YAYITA BLACK", "FERNET BRANCA 450CC",
+            "FERNET BRANCA 750", "FERNET BUHERO", "FIDEO MOSTACHOL", "FIDEOS AVE MARIA SOL PAMPEAÑO", "FINLANDIA CLASICO",
+            "FINLANDIA LIGTH", "FINLANDIA MAS LIVIANO", "FIZZ EXTREM", "FLAN VAINILLA", "FLICS MENTA", "FLYNN PAFF CHALLENGE",
+            "FORMIS VAINILLA CHOCOLATE 102 GRS", "FRAMBUESAS BANADA CHOCO CON", "FRAMBUESAS BANADAS AMARGO", "FRESH LIMONADA 15",
+            "FRESH MANZANA 1 5L", "FRESH MIX FRUTAL 1 5L", "FRESH NARANJA 1 5L", "FRESH PERA 1.5", "FRESH POMELO 15L",
+            "FRUTIGRAM AVENA Y FRUT ROJOS", "FRUTIGRAM AVENA Y PASAS", "FRUTIGRAM SEMILLAS", "FRUTIGRAM TROPICAL",
+            "GAJITOS FRUTALES", "GALLETITA MILKA MOUSSE CHOCO", "GALLETITA TRIO GLASSY", "GALLETITAS DE AGUA LA PROVIDENCIA",
+            "GALLETITAS GANIX CEREAL", "GALLETITAS GRANIX S/SAL", "GALLETITAS GRANIX SESAMO", "GALLETITAS LA PROVIDENCIA X 5",
+            "GANCIA 950CC", "GANCIA S/ALCOHOL LATA", "GARBANZOZ INALPA", "GELATINA FRUTILLA", "GELATINA SIN SABOR", "GIN GORDON",
+            "GRANIX SALVADO", "GRANIX SANDWICH", "GUAYMALLEN COMUN BLANCO", "HABANITOS 60G", "HALLS CHERRY", "HALLS EXTRA FUERTE",
+            "HALLS MENTA", "HALLS MENTHOL", "HALLS MENTOL", "HALLS MIEL", "HALLS MIEL CON MENTA", "HALLS SANDIA", "HARINA 000 MORIXE",
+            "HARINA PIZZAS MORIXE", "HEINEKEN LATA", "HELADO BON O BON CORAZON BLANCO", "HELADO COFLER ALMEDRAS",
+            "HELADO CONO BOMOBOM", "HELADO CONO COFLER DUO", "HELADO MOGUL DIENTES", "HELADO MOGUL FRUT NAR",
+            "HELADO MOGUL LIMON FRUT", "HELADO PALITO BOMBON", "HELADO SLICE FRUTILLA", "HELADO SLICE LIMON", "HIGIENOL FRESH",
+            "HOLANDA BOCADITOS", "HOROSCOPO", "HUEVO ROCKLETS", "IMPERIAL LAGER LATA", "JABON EN PAN", "JABON REXONA BAMBOO125G",
+            "JABON TOCADOR LUX JAZMIN", "JARDINERA INALPA", "JUGO ARCOR MULTIFRUTA", "JUGO ARCOR NARANJA/MANGO",
+            "JUGO BC LIMONADA FRUTOS ROJOS", "JUGO BC LIMONADA MARACUYA", "JUGO BC MENTA JENGIBRE", "JUGO CLIGHT NARANJA/MANGO",
+            "JUGO CLIHT POMELADA HIBISCUS", "JUGO TANG MANDARINA", "JUGO TANG NARANJA BANANA", "KESITAS 125G",
+            "KETCHUP DANICA 220G", "KETCHUP HELLMANS 60G", "KINDER AZUL", "KINDER BUENO", "KINDER ROSA", "KINDER VERDE",
+            "KIT KAT NEGRO", "KOPA HELADA FRUTILLA/AMERICANA", "LA GOTITA", "LA GOTITA EN GEL", "LA LECHERA NUTRIFUERZA",
+            "LAMPARITA LED 7W", "LAMPARITA LEDVANCE", "LATA COCA 354 ZERO", "LATITUD 33 MALBEC", "LAYS BARBACOA", "LAYS PANCETA",
+            "LAYS PROVOLETA", "LEVADURA LEVEX POLVO X 2", "LICOR CUSENIER CHOCOLATE", "LICOR CUSENIER HUEVO", "LINCOLN CLASICA",
+            "LINCOLN CLASICAS 153G", "LINCOLN COCO", "LUCKY ORIGEN CAPS COMUN", "LUCKY ORIGEN COMUN", "LUCKY STRIKE CAPS 12",
+            "MAGDALENA C/CHIP", "MAGDALENA CLASICA", "MAGDALENAS COCO/DDL", "MAGDALENAS CON CHIP", "MAGDALENAS GAONA MARMOLADAS",
+            "MAGDALENAS MARMOLADAS", "MAIZ ELIO", "MAIZENA 250G", "MANA ACARAMELADAS", "MANA LECHE 136 GRS", "MANA RELLENAS DE VAINILLA",
+            "MANTECA COTAR 200G", "MANTECOL 111G", "MANTECOL X64G", "MARLBORO CRAFTED CORAL", "MARLBORO FUSION BOX",
+            "MAS LOCO QUE UNA CABRA MALBEC", "MATE COCIDO TARAGUI", "MAYO HELLMANS 500", "MAYONESA NATURA 500", "MELBA 120G",
+            "MENTHO PLUS SANDIA", "MENTHOPLUS ACIDO MZA", "MENTHOPLUS MENTOL", "MENTITAS CHERRY", "MENTITAS DULCE DE LECHE",
+            "MENTITAS FRUTALES", "MENTITAS KIDS", "MENTITAS MENTOL", "MERENGADAS", "MERMELADA DULCOR DAMASCO",
+            "MERMELADA DULCOR NARANJA", "MERMELADA DULCOR ZAPALLO", "MIEL ORIETA", "MII TASTAFLOLA FRUTOS ROJOS",
+            "MILANESAS DE SOJA LATINA", "MILKA ALMENDRAS 55G", "MILKA BLANCO 55G", "MILKA CHOCOPAUSE OREO", "MILKA DDL 29G",
+            "MILKA LEGER ALMENDRAS 45G", "MILKA LEGER COMBINADO 50G", "MILKA LEGER LECHE 50G", "MILKA OREO BLANCO 55",
+            "MILLER LATA 473 CC", "MINI OREOS 50GR", "MINI PEPITOS", "MINI TOSTADAS DE ARROZ", "MIRINDA 15", "MIRINDA 500",
+            "MIRINDA LATA", "MOGUL 360 OSITO", "MOGUL BLOODY MONSTER", "MOGUL DUO MUNDIAL", "MOGUL FRUTALES 50G",
+            "MOGUL MASTI ROLL TUTTI FRUTTI", "MOGUL OSITOS PICANTES", "MOGUL PALOTE EXTREME", "MOGUL PALOTE UVA/TUTTI FRUTI",
+            "MOGUL PIECITOS", "MOGUL TIBURONCITOS", "MOGUL TUBITO EXTREM", "MONSTER CERO", "MONSTER ENERGY", "MONSTER MANGO LOCO",
+            "MONSTER NGY", "MONSTER SIN AZUCAR", "MORRONES BAHIA", "MOSTAZA DANICA 220G", "MOSTAZA DANICA 60G",
+            "NACHOS CHOCLO/MANTECA QUENTO", "NATURAL TOST CEREALES Y SEMILLAS", "NATURAL TOST CLASICA", "NATURAL TOST DULCES",
+            "NATURAL TOST INTEGRALES", "NATURAL TOST LIGHT", "NATURAL TOST SALVADO LIGHT", "NESTLE CHOC SUAV Y CREM 45GR",
+            "NESTLE CRUNCH 45GR", "NESTLE SUAV Y CREM 22GR", "NEVADITOS", "NIEVE DE COTILLON", "NOBLEZA GAUCHA",
+            "NORTON ELEGIDO E.B", "NOVECENTO 750", "NUEZ MOSCADA MOLIDA CHEVALIER", "NUTELLA B-READY OBLEA",
+            "OBLEA BONOBON LECHE MEGA", "OBLEA BONOBON XL", "OBLEA ZUPAY FRUTILLA", "OBLITA BLACK 50G", "OBLITA CHOCOLATE 100GR",
+            "OBLITA DDL 100GR", "OBLITAS CHOCOLATE 50G", "OBLITAS FRUTILLA 50G", "OBLITAS VAINILLA 50G", "OFF CREMA 60G",
+            "OREO BAÑADAS CHOCO NEGRO", "OREO BAÑADA", "OREO BAÑADA CHOCO BLANCO", "OREO X6 65G", "OSITOS MOGUL",
+            "PALITO BOMBON CHOCOLATE", "PALMERITAS DEUBEL", "PAN DE MESA DON YEYO", "PAN INTEGRAL 100%", "PAN INTEGRAL FIBRA",
+            "PAN LACTEADO DON YEYO 400G", "PAN RAYADO RIERA 500GR", "PANO AMARILLO VIRULANA", "PANUELITOS ELITE",
+            "PAPA RUSTICA SIMPLOT", "PAPAS JAMON SERRANO 162G", "PAPAS QUENTO ASADO CRIOLLO", "PAPAS QUENTO KETCHUP",
+            "PAPAS QUENTO QUESO CHEDDAR", "PAPEL ELEGANTE", "PAPEL HIGIENICO ELEGANTE", "PAPEL HIGIENICO ELEGANTE X 80M",
+            "PAPEL HIGUIENICO SANIDAD", "PAPELILLO CELULOSA ZEUS", "PARAGUITA CHOCOLATE", "PASEO 5 SEMILLAS", "PASEO CRACKET 300G",
+            "PASEO MINI SALVADO 300G", "PASEO MIX CEREALES 300G", "PASEO OLIVA Y ROMERO", "PASEO PIZZA", "PASEO QUESO",
+            "PASEO SESAMO 300G", "PASEO SIN SAL 300G", "PASO DE LOS TORO 500", "PASTILLITAS PUNCH", "PATAGONIA 24 7 740",
+            "PEP RAMITAS QUESO", "PEPAS C/CHIP TOCONIATO", "PEPAS CHOCOTRIO", "PEPAS TERAPIN 400GR", "PEPAS TOCONIATO",
+            "PEPSI 2L", "PEPSI 500ML", "PERFUMINA DEA MARINA", "PERFUMINA DEA MIL FLORES", "PERFUMINA GIGANTE LAVANDA",
+            "PESCADO RAUL NEGRO", "PETACA COGNAC", "PETACA GIN", "PETACA VODKA", "PETACA WHISKY CRIADORES", "PETACA WHISKY DERNA",
+            "PIER BOX", "PILA ENERGIZER AA", "PIMENTON DULCE CHEVALIER", "PIMIENTA BLANCA MOLIDA CHEVALIER",
+            "PIMIENTA NEGRA MOLIDA CHEVALIER", "PIPAS", "PITUSAS CHOCOLATE", "PITUSAS FRUTILLA", "PITUSAS JALEA", "PITUSAS LIMON",
+            "PITUSAS MERENGUE 120GR", "PITUSAS VAINILLA", "PLAYADITO 500", "POET DESPERTAR DE ENERGIA", "POET MUSICA EN PRIMAVERA",
+            "POSTRES HELADERA", "POWERADE BLUE 500", "POWERADE BLUE 995", "POWERADE BLUE ZERO 500", "POWERADE MANZANA 500",
+            "POWERADE MANZANA 995", "POWERADE RED 995", "PRESERVATIVOS M ULTRA SENSIBLES", "PRESERVATIVOS PRIME",
+            "PRIME ESPERMICIDA", "PRIME EXTRA LUBRICADO", "PRIME RETARDANTE", "PRIME STRONGER", "PRIME SUPER FINO",
+            "PRIME TACHAS", "PRIME TEXTURADOS", "PRIME WARMING", "PRINGLES CHURRASCO", "PRINGLES MARGUERITA",
+            "PROFUGO CHENIN DULCE", "PROFUGO ESPECIAS", "PRONTO AZUL", "PUNTE MES", "PURE DE PAPAS KNORR",
+            "PURE DE TOMATE DE LA HUERTA", "QUENTITOS SABOR CHEDDAR 75GR", "QUENTO MIX", "QUESO CREMA TREMBLAY",
+            "QUESO RAYADO SERENISIMA 70G", "QUESO RAYADO TREMBLAY", "QUILMES CHICA 340", "QUILMES IPA 1L", "QUILMES STOUT 1L",
+            "QUITAESMALTE ALGABO", "QUITAESMALTE ALGABO HUMECTANTE", "QUITAESMALTE CUTEX", "QURA PLUS",
+            "RED BULL SABOR SANDIA 250 ML", "RED BULL SUGAR FREE 250", "REGILLA FIBRAN", "REXONA ANTIBACTERIAL",
+            "REXONA BAMBOO Y ALOE VERA", "RHODESIA 22GR", "RICOTTA GARCIA", "ROCKLETS EXTREME", "ROCKLETS MUNDIAL 20G",
+            "ROCKLETS PICANTES", "ROLLO COCINA ELEGANTE", "SABOR EN POLVO 4 QUESOS", "SABOR EN POLVO CHAMPIGNONES",
+            "SABOR EN POLVO CREMA Y VERDEO", "SAL PARRILLA", "SALADIX CALABRESA", "SALADIX DUO 33G", "SALADIX FUEGO",
+            "SALADIX JAMON 40G", "SALSA BLANCA ALICANTE", "SALSA GOLF 250", "SALSA GOLF DANICA 200G", "SANTA FE 1L",
+            "SANTA JULIA CHENIN DULCE", "SANTA JULIA LUNARES", "SANTA JULIA MALBEC", "SAVORA 250 GR", "SAVORA 60G",
+            "SCHWEPPES 1500 POMELO", "SCHWEPPES 500 POMELO", "SERNOVA TROPICAL PASSION", "SERRANITAS X3",
+            "SHAMPHOO PLUSBELLE BRILLO", "SHOT 90G", "SIDRA 1888", "SIDRA 1930 DOLCE", "SMIRNOFF 700ML", "SMIRNOFF GREEN APPLE",
+            "SMIRNOFF RASPBERRY", "SMIRNOFF WATERMELON", "SODA SOCIAL 600ML", "SPAGHETTI N7", "SPEED 250ML", "SPEED 500",
+            "SPEED SIN AZUCAR", "SPRING POP", "SPRITE 1 500", "SPRITE 1 500 SIN AZUCAR", "SPRITE 1000", "SPRITE 354",
+            "SPRITE 500", "SPRITE CHIQUITA VIDRIO", "SURTIDO BAGLEY", "SURTIDO DIVERSION", "SVELTY EXTRA CALCIO",
+            "SVELTY LECHE EN POLVO", "TANG MANZANA", "TAPAS LIGHT", "TAPITAS FANTOCHES X 350G", "TE LA VIRGINIA", "TEMPLE HONEY",
+            "TEMPLE SCOTISH", "TIC TAC MENTA", "TITA", "TOALLITAS ALWAYS XTRA NOCTURNA", "TOALLITAS LINA X16",
+            "TOMATE TRITURADO HORVINDUL", "TOPLINE EXTREME SANDIA", "TOPLINE EXTREME TUTTI FRUTTI", "TOPLINE MINI",
+            "TORTILLAS TIPO RAPIDITAS DON YEYO", "TOSTADAS DE ARROZ CLASICAS", "TOSTADAS DE ARROZ DULCE", "TOSTADAS DE ARROZ S/SAL",
+            "TOSTADAS DE ARROZ SIN SAL CARILO", "TOSTADAS DE MESA SALADAS", "TOSTADAS LIGHT", "TOSTADAS MANIERI DULCES",
+            "TOSTADO/CARLITOS MIGAMAX", "TOSTEX CINTITAS C/SAL + SALSA", "TOSTEX CINTITAS CLASICAS", "TRAPO DE PISO GRIS DEA",
+            "TRAPO REJILLA PABILO DEA", "TRAVIATA PORTENITAS", "TRES PATITOS", "TRI CHIPS ARCOIRIS", "TRI CHISPAS BLANCA",
+            "TRIANGULO MIGA MIGA MAX", "TRIO CHIP", "TRIO CHOC 300G", "TRIO FROLITAS MEMBRILLO", "TRIO OSKITO BANADOS",
+            "TRIO PEPAS 320G", "TRIO PEPAS ALEMANAS 500G", "TRIO PEPAS CON CHIP", "TRIO SURTIDAS VARIETTE",
+            "TRIO TARTELETTE FRUTILLA", "TURROCKLETS", "TURRON MANI", "TWISTOS 40G", "UNION SUAVE", "VAINILLAS SWEET COCKIES",
+            "VELAS GOLONDRINA", "VINAGRE DE ALCOHOL BARBERA", "VINO COLON BLANCO DULCE FRESCO", "VINO COLON DULCE FRESCO",
+            "VINO COLON SYRAH", "VINO COLON TINTO DULCE", "VINO DILEMA MALBEC", "VINO OTRO LOCO MAS BLANCO",
+            "VINO OTRO LOCO MAS TINTO", "VINO PROFUGO", "VINO UVITA BLANCO DULCE", "VINO UVITA TINTO DULCE", "VIRGINIA SUPERSLIMS",
+            "VIZZIO MANI", "VODKA KOVAC", "VODKA SKYY COSMIC", "VODKA SKYY SABORIZADO BERRY", "YERBA AMANDA", "YERBA ANDRESITO",
+            "YERBA CBC HIERBAS SERRANAS", "YERBA CBSE", "YERBA MATEANDO", "YERBA PAJARO AZUL", "YERBA ROSAMONTE",
+            "YERBA SINCERIDAD", "YERBA TARAGUI X 500", "YOGURT ILOLAY VAI FIRME", "YOGUSRT NATURAL SIN AZUCAR 300GR",
+            "YUMI DIENTES", "YUMI FRUTILLA CON CREMA", "YUMI HUEVOS FRITOS", "YUMI RINGS CRUNCH"
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const datalist = document.getElementById('lista-productos');
+            productosBase.forEach(prod => {
+                const option = document.createElement('option');
+                option.value = prod;
+                datalist.appendChild(option);
+            });
+            actualizarContador();
+        });
+
+        function cambiarTab(tab) {
+            ['vencimientos', 'faltantes', 'horas'].forEach(t => {
+                document.getElementById('tab-' + t).classList.add('hidden');
+                const btn = document.getElementById('btn-' + t);
+                btn.className = "flex-1 pb-2.5 border-b-2 border-transparent text-slate-400 text-center transition-all hover:text-slate-600 font-semibold";
+            });
+
+            document.getElementById('tab-' + tab).classList.remove('hidden');
+            const btnActivo = document.getElementById('btn-' + tab);
+            
+            const colores = { vencimientos: 'emerald', faltantes: 'amber', horas: 'blue' };
+            const c = colores[tab];
+            btnActivo.className = `flex-1 pb-2.5 border-b-2 border-${c}-600 text-${c}-600 text-center font-semibold transition-all`;
+        }
+
+        async function guardarVencimiento(e) {
+            e.preventDefault();
+
+            const btnSubmit = e.target.querySelector('button[type="submit"]');
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = "Guardando...";
+
+            const datos = {
+                accion: "guardarVencimiento",
+                tipo: "Vencimientos",
+                producto: document.getElementById('v-producto').value,
+                fechaVencimiento: document.getElementById('v-fecha').value,
+                cantidad: document.getElementById('v-cantidad').value,
+                timestamp: new Date().toLocaleString("es-AR")
+            };
+
+            try {
+                await fetch(URL_SCRIPT, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+
+                mostrarToast("¡Vencimiento guardado!", "✅");
+                document.getElementById('form-vencimientos').reset();
+                actualizarContador();
+
+            } catch (error) {
+                console.error("Error al guardar:", error);
+                mostrarToast("Hubo un error al guardar", "❌");
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = "Guardar Vencimiento";
+            }
+        }
+
+        function abrirModalLista() {
+            document.getElementById('modal-lista').classList.remove('hidden');
+            cargarVencimientosDesdeSheet();
+        }
+
+        function cerrarModalLista() {
+            document.getElementById('modal-lista').classList.add('hidden');
+        }
+
+        async function cargarVencimientosDesdeSheet() {
+            const contenedor = document.getElementById('contenedor-lista');
+            contenedor.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Cargando desde Google Sheets...</p>`;
+
+            try {
+                const res = await fetch(`${URL_SCRIPT}?accion=obtenerVencimientos`);
+                const lista = await res.json();
+                renderizarListaModal(lista);
+                document.getElementById('badge-contador').textContent = lista.length;
+            } catch (err) {
+                console.error("Error al leer Sheet:", err);
+                contenedor.innerHTML = `<p class="text-xs text-rose-500 text-center py-6">Error al cargar registros del Sheet.</p>`;
+            }
+        }
+
+        function renderizarListaModal(guardados) {
+            const contenedor = document.getElementById('contenedor-lista');
+            contenedor.innerHTML = '';
+
+            if (!guardados || guardados.length === 0) {
+                contenedor.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">No hay vencimientos cargados en la planilla.</p>`;
+                return;
+            }
+
+            guardados.forEach((item) => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2 text-xs";
+                card.innerHTML = `
+                    <div class="space-y-0.5">
+                        <p class="font-bold text-slate-800">${item.producto}</p>
+                        <p class="text-slate-500">📅 Vence: <span class="font-semibold text-rose-600">${item.fechaVencimiento}</span> | Cant: <span class="font-semibold">${item.cantidad}</span></p>
+                    </div>
+                    <button onclick="eliminarVencimientoDelSheet(${item.fila})" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-2 rounded-lg transition-all font-bold" title="Eliminar del Sheet">
+                        🗑️
+                    </button>
+                `;
+                contenedor.appendChild(card);
+            });
+        }
+
+        async function eliminarVencimientoDelSheet(numFila) {
+            if (!confirm("¿Seguro que querés eliminar esta fila del Sheet?")) return;
+
+            try {
+                await fetch(URL_SCRIPT, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accion: "eliminarVencimiento", fila: numFila })
+                });
+
+                mostrarToast("Producto eliminado del Sheet", "🗑️");
+                setTimeout(cargarVencimientosDesdeSheet, 1000); // Recargar lista
+            } catch (err) {
+                console.error(err);
+                mostrarToast("Error al eliminar", "❌");
+            }
+        }
+
+        async function actualizarContador() {
+            try {
+                const res = await fetch(`${URL_SCRIPT}?accion=obtenerVencimientos`);
+                const lista = await res.json();
+                document.getElementById('badge-contador').textContent = lista.length;
+            } catch (e) {}
+        }
+
+        function mostrarToast(mensaje, icono = "✅") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-mensaje').textContent = mensaje;
+            document.getElementById('toast-icon').textContent = icono;
+            
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
