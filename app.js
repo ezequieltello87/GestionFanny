@@ -12,6 +12,8 @@ const CONFIG = {
 let registros = [];                // cache de la lista del Sheet
 let toastTimer = null;
 let ultimoFoco = null;             // para devolver el foco al cerrar el modal
+let filtroActual = 'todos';        // 'todos' | 'vencidos' | 'proximos'
+let textoBusqueda = '';            // lo que se escribe en el buscador de la lista
 
 const $ = (id) => document.getElementById(id);
 const PRODUCTOS_SET = new Set(PRODUCTOS);
@@ -46,6 +48,13 @@ function estadoVencimiento(iso) {
     return { clase: 'text-emerald-600', texto: `Vence en ${dias} d` };
 }
 
+// Un solo criterio para el resumen y los filtros (lo que vence hoy cuenta como "próximos")
+function categoria(iso) {
+    const dias = diasHasta(iso);
+    if (dias < 0) return 'vencidos';
+    return dias <= CONFIG.DIAS_ALERTA ? 'proximos' : 'ok';
+}
+
 /* ============ API (Apps Script) ============ */
 // Content-Type text/plain = "request simple": no hay preflight y se puede leer la respuesta.
 async function api(payload) {
@@ -64,7 +73,7 @@ async function api(payload) {
 async function cargarRegistros() {
     const { lista } = await api({ accion: 'obtenerVencimientos' });
     registros = lista;
-    actualizarBadge();
+    actualizarResumen();
 }
 
 /* ============ UI: toast y badge ============ */
@@ -77,35 +86,34 @@ function mostrarToast(mensaje, icono = '✅') {
     toastTimer = setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), CONFIG.TOAST_MS);
 }
 
-function actualizarBadge(texto) {
-    $('badge-contador').textContent = texto ?? registros.length;
-    if (texto === undefined) actualizarResumen();   // se recalcula cada vez que cambia la lista
-}
-
-/* ============ Resumen: vencidos y próximos ============ */
-function crearChip(clase, titulo, grupo) {
-    const chip = el('div', `flex-1 rounded-xl border p-3 ${clase}`);
+/* ============ Resumen: tres tarjetas que abren la lista ============ */
+function crearChip(clase, titulo, grupo, filtro) {
+    const chip = el('button', `rounded-xl border px-2 py-2.5 text-left transition-all hover:brightness-95 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-slate-400 outline-none ${clase}`);
+    chip.type = 'button';
+    chip.dataset.filtro = filtro;
+    chip.setAttribute('aria-label', `${titulo}: ${grupo.n}. Ver lista`);
     chip.append(
-        el('p', 'text-2xl font-bold leading-none', String(grupo.n)),
-        el('p', 'text-xs font-semibold mt-1', titulo),
-        el('p', 'text-[11px] opacity-80', `${grupo.u} unidad${grupo.u === 1 ? '' : 'es'}`),
+        el('span', 'block text-2xl font-bold leading-none', String(grupo.n)),
+        el('span', 'block text-xs font-semibold mt-1', titulo),
+        el('span', 'block text-[11px] opacity-80', `${grupo.u} unidad${grupo.u === 1 ? '' : 'es'}`),
     );
     return chip;
 }
 
 function actualizarResumen() {
-    const vencidos = { n: 0, u: 0 };
-    const proximos = { n: 0, u: 0 };
+    const grupos = { todos: { n: 0, u: 0 }, vencidos: { n: 0, u: 0 }, proximos: { n: 0, u: 0 } };
 
     registros.forEach((r) => {
-        const dias = diasHasta(r.fechaVencimiento);
-        const grupo = dias < 0 ? vencidos : dias <= CONFIG.DIAS_ALERTA ? proximos : null;
-        if (grupo) { grupo.n += 1; grupo.u += r.cantidad; }
+        grupos.todos.n += 1;
+        grupos.todos.u += r.cantidad;
+        const g = grupos[categoria(r.fechaVencimiento)];   // 'ok' no tiene grupo: solo suma en "Todos"
+        if (g) { g.n += 1; g.u += r.cantidad; }
     });
 
     $('resumen').replaceChildren(
-        crearChip('bg-rose-50 border-rose-200 text-rose-700', 'Ya vencidos', vencidos),
-        crearChip('bg-amber-50 border-amber-200 text-amber-700', `Vencen en ${CONFIG.DIAS_ALERTA} días`, proximos),
+        crearChip('bg-slate-50 border-slate-200 text-slate-700', 'Todos', grupos.todos, 'todos'),
+        crearChip('bg-rose-50 border-rose-200 text-rose-700', 'Vencidos', grupos.vencidos, 'vencidos'),
+        crearChip('bg-amber-50 border-amber-200 text-amber-700', `Próximos ${CONFIG.DIAS_ALERTA} d`, grupos.proximos, 'proximos'),
     );
 }
 
@@ -139,7 +147,7 @@ async function guardarVencimiento(e) {
     try {
         const { registro } = await api({ accion: 'guardarVencimiento', producto, fechaVencimiento, cantidad });
         registros.push(registro);
-        actualizarBadge();
+        actualizarResumen();
         mostrarToast('¡Vencimiento guardado!', '✅');
         form.reset();
         $('v-producto').focus();
@@ -152,6 +160,31 @@ async function guardarVencimiento(e) {
 }
 
 /* ============ Lista / modal ============ */
+const FILTROS = { todos: 'Todos', vencidos: 'Vencidos', proximos: `Próximos ${CONFIG.DIAS_ALERTA} d` };
+const PILL_BASE = 'px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all focus-visible:ring-2 focus-visible:ring-slate-400 outline-none';
+const PILL_ACTIVA = 'bg-slate-900 text-white border-slate-900';
+const PILL_INACTIVA = 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100';
+
+// Para buscar sin importar mayúsculas ni tildes
+const sinTildes = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+function pasaFiltros(r, palabras) {
+    if (filtroActual !== 'todos' && categoria(r.fechaVencimiento) !== filtroActual) return false;
+    const nombre = sinTildes(r.producto);
+    return palabras.every((p) => nombre.includes(p));   // tienen que estar todas las palabras escritas
+}
+
+function actualizarFiltros() {
+    document.querySelectorAll('[data-pill]').forEach((b) => {
+        const f = b.dataset.pill;
+        const n = f === 'todos' ? registros.length : registros.filter((r) => categoria(r.fechaVencimiento) === f).length;
+        const activo = f === filtroActual;
+        b.textContent = `${FILTROS[f]} (${n})`;
+        b.className = `${PILL_BASE} ${activo ? PILL_ACTIVA : PILL_INACTIVA}`;
+        b.setAttribute('aria-pressed', String(activo));
+    });
+}
+
 function crearTarjeta(item) {
     const est = estadoVencimiento(item.fechaVencimiento);
 
@@ -179,24 +212,36 @@ function crearTarjeta(item) {
 }
 
 function renderizarLista() {
+    actualizarFiltros();
     const cont = $('contenedor-lista');
     cont.replaceChildren();
 
-    if (registros.length === 0) {
-        cont.append(el('p', 'text-xs text-slate-400 text-center py-6', 'No hay vencimientos cargados en la planilla.'));
+    const palabras = sinTildes(textoBusqueda.trim()).split(/\s+/).filter(Boolean);
+    const visibles = registros
+        .filter((r) => pasaFiltros(r, palabras))
+        .sort((a, b) => a.fechaVencimiento.localeCompare(b.fechaVencimiento));
+
+    if (visibles.length === 0) {
+        const msg = registros.length === 0 ? 'No hay vencimientos cargados en la planilla.' : 'No hay productos que coincidan.';
+        cont.append(el('p', 'text-xs text-slate-400 text-center py-6', msg));
         return;
     }
-    const ordenados = [...registros].sort((a, b) => a.fechaVencimiento.localeCompare(b.fechaVencimiento));
-    cont.append(...ordenados.map(crearTarjeta));
+    cont.append(...visibles.map(crearTarjeta));
 }
 
-async function abrirModal() {
+async function abrirModal(filtro = 'todos') {
+    filtroActual = filtro;
+    textoBusqueda = '';
+    $('buscar').value = '';
     ultimoFoco = document.activeElement;
     $('modal-lista').classList.remove('hidden');
     $('btn-cerrar').focus();
 
     if (registros.length) renderizarLista();   // muestra la cache mientras se actualiza
-    else $('contenedor-lista').replaceChildren(el('p', 'text-xs text-slate-400 text-center py-6', 'Cargando desde Google Sheets...'));
+    else {
+        actualizarFiltros();
+        $('contenedor-lista').replaceChildren(el('p', 'text-xs text-slate-400 text-center py-6', 'Cargando desde Google Sheets...'));
+    }
 
     try {
         await cargarRegistros();
@@ -224,7 +269,7 @@ async function eliminarRegistro(id) {
         await api({ accion: 'eliminarVencimiento', id });
         registros = registros.filter((r) => r.id !== id);
         renderizarLista();
-        actualizarBadge();
+        actualizarResumen();
         mostrarToast('Registro eliminado', '🗑️');
     } catch (err) {
         console.error('Error al eliminar:', err);
@@ -241,7 +286,15 @@ function init() {
 
     // Eventos
     $('form-vencimientos').addEventListener('submit', guardarVencimiento);
-    $('btn-ver-lista').addEventListener('click', abrirModal);
+    $('resumen').addEventListener('click', (e) => {             // tarjetas del resumen -> lista filtrada
+        const chip = e.target.closest('[data-filtro]');
+        if (chip) abrirModal(chip.dataset.filtro);
+    });
+    $('filtros').addEventListener('click', (e) => {
+        const pill = e.target.closest('[data-pill]');
+        if (pill) { filtroActual = pill.dataset.pill; renderizarLista(); }
+    });
+    $('buscar').addEventListener('input', (e) => { textoBusqueda = e.target.value; renderizarLista(); });
     $('btn-cerrar').addEventListener('click', cerrarModal);
     $('btn-cerrar-x').addEventListener('click', cerrarModal);
     $('modal-lista').addEventListener('click', (e) => { if (e.target === e.currentTarget) cerrarModal(); });
@@ -258,9 +311,8 @@ function init() {
 
 function mostrarErrorCarga(err) {
     console.warn('No se pudo cargar la lista:', err);
-    actualizarBadge('?');
 
-    const aviso = el('div', 'w-full rounded-xl border border-rose-200 bg-rose-50 text-rose-700 p-3 text-xs space-y-1');
+    const aviso = el('div', 'col-span-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 p-3 text-xs space-y-1');
     aviso.append(
         el('p', 'font-semibold', 'No se pudo leer la lista del Sheet'),
         el('p', 'break-words', `Motivo: ${err.message}`),

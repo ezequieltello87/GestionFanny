@@ -32,8 +32,8 @@
                 <span aria-hidden="true">📌</span> Registrá los productos con fecha límite para priorizar su exhibición o descuento.
             </div>
 
-            <!-- Resumen: se completa desde app.js -->
-            <div id="resumen" class="flex gap-3" role="status" aria-label="Resumen de vencimientos"></div>
+            <!-- Resumen: tocá una tarjeta para abrir la lista (se completa desde app.js) -->
+            <div id="resumen" role="group" aria-label="Ver lista de vencimientos" class="grid grid-cols-3 gap-2"></div>
 
             <form id="form-vencimientos" class="space-y-4" novalidate>
                 <div>
@@ -57,16 +57,10 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="submit" data-texto="Guardar Vencimiento"
-                            class="bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] disabled:opacity-60 disabled:cursor-wait text-white font-bold py-3 px-2 rounded-xl text-xs transition-all shadow-md shadow-emerald-600/20 text-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 outline-none">
-                        Guardar Vencimiento
-                    </button>
-                    <button type="button" id="btn-ver-lista"
-                            class="bg-slate-100 hover:bg-slate-200 active:scale-[0.99] text-slate-700 font-bold py-3 px-2 rounded-xl text-xs transition-all border border-slate-300 flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-slate-400 outline-none">
-                        <span aria-hidden="true">📋</span> Ver Registrados (<span id="badge-contador">0</span>)
-                    </button>
-                </div>
+                <button type="submit" data-texto="Guardar Vencimiento"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] disabled:opacity-60 disabled:cursor-wait text-white font-bold py-3 px-2 rounded-xl text-sm transition-all shadow-md shadow-emerald-600/20 text-center focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 outline-none">
+                    Guardar Vencimiento
+                </button>
             </form>
         </section>
 
@@ -85,6 +79,15 @@
                     <span aria-hidden="true">✕</span>
                 </button>
             </div>
+
+            <div id="filtros" role="group" aria-label="Filtrar lista" class="flex flex-wrap gap-1.5">
+                <button type="button" data-pill="todos"></button>
+                <button type="button" data-pill="vencidos"></button>
+                <button type="button" data-pill="proximos"></button>
+            </div>
+
+            <input type="search" id="buscar" autocomplete="off" aria-label="Buscar producto en la lista" placeholder="Buscar producto en la lista..."
+                   class="w-full border border-slate-300 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
 
             <div id="contenedor-lista" class="space-y-2 max-h-[300px] overflow-y-auto pr-1" aria-live="polite"></div>
 
