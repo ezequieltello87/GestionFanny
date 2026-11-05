@@ -2,7 +2,7 @@
 
 /* ============ Configuración ============ */
 const CONFIG = {
-    URL_SCRIPT: 'https://script.google.com/macros/s/AKfycbzhukxvXhSGQHXdBjWiV1Zu_MdTIiM08eAUNWC5NgpMdykE_w3RuU_k_NrVpFBNeTs7/exec',
+    URL_SCRIPT: 'https://script.google.com/macros/s/AKfycbxMnklXop8tpII84ADHyA7_0AL19f5g-xhHiPSrYcA_-a8N3uAu9-3KbKIZufvVhdkw/exec',
     TOKEN: 'minimarket2026',   // tiene que ser igual al TOKEN de Code.gs
     DIAS_ALERTA: 30,               // días antes del vencimiento para marcar en naranja
     TOAST_MS: 3000,
