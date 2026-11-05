@@ -2,7 +2,7 @@
 
 /* ============ Configuración ============ */
 const CONFIG = {
-    URL_SCRIPT: 'https://script.google.com/macros/s/AKfycbxPJsrnXQGZ69H-njZkuMk0mK6ENwYGWieGDP0UTiZpyrVW9FpQ3DjKrOpE2zLxER5I/exec',
+    URL_SCRIPT: 'https://script.google.com/macros/s/AKfycbzhukxvXhSGQHXdBjWiV1Zu_MdTIiM08eAUNWC5NgpMdykE_w3RuU_k_NrVpFBNeTs7/exec',
     TOKEN: 'minimarket2026',   // tiene que ser igual al TOKEN de Code.gs
     DIAS_ALERTA: 30,               // días antes del vencimiento para marcar en naranja
     TOAST_MS: 3000,
@@ -18,11 +18,29 @@ let textoBusqueda = '';            // lo que se escribe en el buscador de la lis
 const $ = (id) => document.getElementById(id);
 const PRODUCTOS_SET = new Set(PRODUCTOS);
 
+/* ============ Tema Oscuro / Claro ============ */
+function inicializarTema() {
+    const oscuroGuardado = localStorage.getItem('tema-oscuro') === 'true';
+    if (oscuroGuardado) {
+        document.documentElement.classList.add('dark');
+        $('icono-tema').textContent = '☀️';
+    } else {
+        document.documentElement.classList.remove('dark');
+        $('icono-tema').textContent = '🌙';
+    }
+}
+
+function alternarTema() {
+    const esOscuro = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('tema-oscuro', esOscuro);
+    $('icono-tema').textContent = esOscuro ? '☀️' : '🌙';
+}
+
 /* ============ Helpers ============ */
 function el(tag, className, text) {
     const n = document.createElement(tag);
     if (className) n.className = className;
-    if (text !== undefined) n.textContent = text;   // textContent: nunca interpreta HTML
+    if (text !== undefined) n.textContent = text;
     return n;
 }
 
@@ -42,13 +60,12 @@ function diasHasta(iso) {                            // días desde hoy hasta la
 function estadoVencimiento(iso) {
     const dias = diasHasta(iso);
 
-    if (dias < 0)  return { clase: 'text-rose-600',  texto: `Vencido hace ${-dias} d` };
-    if (dias === 0) return { clase: 'text-rose-600',  texto: 'Vence hoy' };
-    if (dias <= CONFIG.DIAS_ALERTA) return { clase: 'text-amber-600', texto: `Vence en ${dias} d` };
-    return { clase: 'text-emerald-600', texto: `Vence en ${dias} d` };
+    if (dias < 0)  return { clase: 'text-rose-600 dark:text-rose-400',  texto: `Vencido hace ${-dias} d` };
+    if (dias === 0) return { clase: 'text-rose-600 dark:text-rose-400',  texto: 'Vence hoy' };
+    if (dias <= CONFIG.DIAS_ALERTA) return { clase: 'text-amber-600 dark:text-amber-400', texto: `Vence en ${dias} d` };
+    return { clase: 'text-emerald-600 dark:text-emerald-400', texto: `Vence en ${dias} d` };
 }
 
-// Un solo criterio para el resumen y los filtros (lo que vence hoy cuenta como "próximos")
 function categoria(iso) {
     const dias = diasHasta(iso);
     if (dias < 0) return 'vencidos';
@@ -56,7 +73,6 @@ function categoria(iso) {
 }
 
 /* ============ API (Apps Script) ============ */
-// Content-Type text/plain = "request simple": no hay preflight y se puede leer la respuesta.
 async function api(payload) {
     if (!navigator.onLine) throw new Error('Sin conexión a internet');
     const res = await fetch(CONFIG.URL_SCRIPT, {
@@ -76,7 +92,7 @@ async function cargarRegistros() {
     actualizarResumen();
 }
 
-/* ============ UI: toast y badge ============ */
+/* ============ UI: toast y resumen ============ */
 function mostrarToast(mensaje, icono = '✅') {
     const toast = $('toast');
     $('toast-mensaje').textContent = mensaje;
@@ -86,7 +102,6 @@ function mostrarToast(mensaje, icono = '✅') {
     toastTimer = setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), CONFIG.TOAST_MS);
 }
 
-/* ============ Resumen: tres tarjetas que abren la lista ============ */
 function crearChip(clase, titulo, grupo, filtro) {
     const chip = el('button', `rounded-xl border px-2 py-2.5 text-left transition-all hover:brightness-95 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-slate-400 outline-none ${clase}`);
     chip.type = 'button';
@@ -106,51 +121,82 @@ function actualizarResumen() {
     registros.forEach((r) => {
         grupos.todos.n += 1;
         grupos.todos.u += r.cantidad;
-        const g = grupos[categoria(r.fechaVencimiento)];   // 'ok' no tiene grupo: solo suma en "Todos"
+        const g = grupos[categoria(r.fechaVencimiento)];
         if (g) { g.n += 1; g.u += r.cantidad; }
     });
 
     $('resumen').replaceChildren(
-        crearChip('bg-slate-50 border-slate-200 text-slate-700', 'Todos', grupos.todos, 'todos'),
-        crearChip('bg-rose-50 border-rose-200 text-rose-700', 'Vencidos', grupos.vencidos, 'vencidos'),
-        crearChip('bg-amber-50 border-amber-200 text-amber-700', `Próximos ${CONFIG.DIAS_ALERTA} d`, grupos.proximos, 'proximos'),
+        crearChip('bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300', 'Todos', grupos.todos, 'todos'),
+        crearChip('bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300', 'Vencidos', grupos.vencidos, 'vencidos'),
+        crearChip('bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300', `Próximos ${CONFIG.DIAS_ALERTA} d`, grupos.proximos, 'proximos'),
     );
 }
 
-/* ============ Guardar ============ */
+/* ============ Guardar / Editar ============ */
 function setCargando(btn, cargando, textoCargando = '') {
     btn.disabled = cargando;
     btn.textContent = cargando ? textoCargando : btn.dataset.texto;
 }
 
+function cancelarEdicion() {
+    $('v-id').value = '';
+    $('form-vencimientos').reset();
+    $('btn-submit').dataset.texto = 'Guardar Vencimiento';
+    $('btn-submit').textContent = 'Guardar Vencimiento';
+    $('btn-cancelar-edicion').classList.add('hidden');
+}
+
+function iniciarEdicion(item) {
+    cerrarModal();
+    $('v-id').value = item.id;
+    $('v-producto').value = item.producto;
+    $('v-fecha').value = item.fechaVencimiento;
+    $('v-cantidad').value = item.cantidad;
+
+    $('btn-submit').dataset.texto = 'Actualizar Vencimiento';
+    $('btn-submit').textContent = 'Actualizar Vencimiento';
+    $('btn-cancelar-edicion').classList.remove('hidden');
+    $('v-producto').focus();
+}
+
 async function guardarVencimiento(e) {
     e.preventDefault();
     const form = e.currentTarget;
-    const btn = form.querySelector('button[type="submit"]');
+    const btn = $('btn-submit');
 
-    if (!form.reportValidity()) return;   // usa la validación nativa (required, min, max)
+    if (!form.reportValidity()) return;
 
+    const id = $('v-id').value;
     const producto = normalizar($('v-producto').value);
     const fechaVencimiento = $('v-fecha').value;
     const cantidad = Number($('v-cantidad').value);
 
     if (!Number.isInteger(cantidad) || cantidad < 1) {
-        mostrarToast('La cantidad debe ser un número entero mayor a 0', '⚠️');
+        mostrarToast('La cantidad debe ser mayor a 0', '⚠️');
         return;
     }
-    if (!PRODUCTOS_SET.has(producto) &&
-        !confirm(`"${producto}" no está en la lista de productos.\n¿Guardarlo igual?`)) {
+    if (!PRODUCTOS_SET.has(producto) && !confirm(`"${producto}" no está en el catálogo.\n¿Continuar igual?`)) {
         return;
     }
 
-    setCargando(btn, true, 'Guardando...');
+    const esEdicion = Boolean(id);
+    setCargando(btn, true, esEdicion ? 'Actualizando...' : 'Guardando...');
+
     try {
-        const { registro } = await api({ accion: 'guardarVencimiento', producto, fechaVencimiento, cantidad });
-        registros.push(registro);
+        const accion = esEdicion ? 'editarVencimiento' : 'guardarVencimiento';
+        const { registro } = await api({ accion, id, producto, fechaVencimiento, cantidad });
+
+        if (esEdicion) {
+            const idx = registros.findIndex((r) => r.id === id);
+            if (idx !== -1) registros[idx] = registro;
+            mostrarToast('¡Registro actualizado!', '✅');
+        } else {
+            registros.push(registro);
+            mostrarToast('¡Vencimiento guardado!', '✅');
+        }
+
         actualizarResumen();
-        mostrarToast('¡Vencimiento guardado!', '✅');
-        form.reset();
-        $('v-producto').focus();
+        cancelarEdicion();
     } catch (err) {
         console.error('Error al guardar:', err);
         mostrarToast(`No se pudo guardar: ${err.message}`, '❌');
@@ -162,16 +208,15 @@ async function guardarVencimiento(e) {
 /* ============ Lista / modal ============ */
 const FILTROS = { todos: 'Todos', vencidos: 'Vencidos', proximos: `Próximos ${CONFIG.DIAS_ALERTA} d` };
 const PILL_BASE = 'px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all focus-visible:ring-2 focus-visible:ring-slate-400 outline-none';
-const PILL_ACTIVA = 'bg-slate-900 text-white border-slate-900';
-const PILL_INACTIVA = 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100';
+const PILL_ACTIVA = 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100';
+const PILL_INACTIVA = 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800';
 
-// Para buscar sin importar mayúsculas ni tildes
 const sinTildes = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 
 function pasaFiltros(r, palabras) {
     if (filtroActual !== 'todos' && categoria(r.fechaVencimiento) !== filtroActual) return false;
     const nombre = sinTildes(r.producto);
-    return palabras.every((p) => nombre.includes(p));   // tienen que estar todas las palabras escritas
+    return palabras.every((p) => nombre.includes(p));
 }
 
 function actualizarFiltros() {
@@ -188,26 +233,34 @@ function actualizarFiltros() {
 function crearTarjeta(item) {
     const est = estadoVencimiento(item.fechaVencimiento);
 
-    const card = el('div', 'bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2 text-xs');
+    const card = el('div', 'bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center justify-between gap-2 text-xs');
 
     const info = el('div', 'space-y-0.5 min-w-0');
-    info.append(el('p', 'font-bold text-slate-800 break-words', item.producto));
+    info.append(el('p', 'font-bold text-slate-800 dark:text-slate-200 break-words', item.producto));
 
-    const detalle = el('p', 'text-slate-500');
+    const detalle = el('p', 'text-slate-500 dark:text-slate-400');
     detalle.append(
         'Vence: ',
-        el('span', 'font-semibold text-slate-700', formatearFecha(item.fechaVencimiento)),
+        el('span', 'font-semibold text-slate-700 dark:text-slate-300', formatearFecha(item.fechaVencimiento)),
         ' | Cant: ',
-        el('span', 'font-semibold text-slate-700', String(item.cantidad)),
+        el('span', 'font-semibold text-slate-700 dark:text-slate-300', String(item.cantidad)),
     );
     info.append(detalle, el('p', `font-semibold ${est.clase}`, est.texto));
 
-    const btn = el('button', 'shrink-0 bg-rose-50 hover:bg-rose-100 text-rose-600 p-2 rounded-lg transition-all font-bold focus-visible:ring-2 focus-visible:ring-rose-400 outline-none', '🗑️');
-    btn.type = 'button';
-    btn.dataset.eliminar = item.id;
-    btn.setAttribute('aria-label', `Eliminar ${item.producto}`);
+    const acciones = el('div', 'shrink-0 flex items-center gap-1');
 
-    card.append(info, btn);
+    const btnEditar = el('button', 'bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 p-2 rounded-lg transition-all font-bold outline-none', '✏️');
+    btnEditar.type = 'button';
+    btnEditar.dataset.editar = item.id;
+    btnEditar.setAttribute('aria-label', `Editar ${item.producto}`);
+
+    const btnEliminar = el('button', 'bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 p-2 rounded-lg transition-all font-bold outline-none', '🗑️');
+    btnEliminar.type = 'button';
+    btnEliminar.dataset.eliminar = item.id;
+    btnEliminar.setAttribute('aria-label', `Eliminar ${item.producto}`);
+
+    acciones.append(btnEditar, btnEliminar);
+    card.append(info, acciones);
     return card;
 }
 
@@ -223,7 +276,7 @@ function renderizarLista() {
 
     if (visibles.length === 0) {
         const msg = registros.length === 0 ? 'No hay vencimientos cargados en la planilla.' : 'No hay productos que coincidan.';
-        cont.append(el('p', 'text-xs text-slate-400 text-center py-6', msg));
+        cont.append(el('p', 'text-xs text-slate-400 dark:text-slate-500 text-center py-6', msg));
         return;
     }
     cont.append(...visibles.map(crearTarjeta));
@@ -237,10 +290,10 @@ async function abrirModal(filtro = 'todos') {
     $('modal-lista').classList.remove('hidden');
     $('btn-cerrar').focus();
 
-    if (registros.length) renderizarLista();   // muestra la cache mientras se actualiza
+    if (registros.length) renderizarLista();
     else {
         actualizarFiltros();
-        $('contenedor-lista').replaceChildren(el('p', 'text-xs text-slate-400 text-center py-6', 'Cargando desde Google Sheets...'));
+        $('contenedor-lista').replaceChildren(el('p', 'text-xs text-slate-400 dark:text-slate-500 text-center py-6', 'Cargando desde Google Sheets...'));
     }
 
     try {
@@ -279,14 +332,19 @@ async function eliminarRegistro(id) {
 
 /* ============ Inicio ============ */
 function init() {
+    inicializarTema();
+
     // Autocompletado
     const frag = document.createDocumentFragment();
     PRODUCTOS.forEach((p) => frag.append(Object.assign(document.createElement('option'), { value: p })));
     $('lista-productos').append(frag);
 
     // Eventos
+    $('btn-tema').addEventListener('click', alternarTema);
     $('form-vencimientos').addEventListener('submit', guardarVencimiento);
-    $('resumen').addEventListener('click', (e) => {             // tarjetas del resumen -> lista filtrada
+    $('btn-cancelar-edicion').addEventListener('click', cancelarEdicion);
+
+    $('resumen').addEventListener('click', (e) => {
         const chip = e.target.closest('[data-filtro]');
         if (chip) abrirModal(chip.dataset.filtro);
     });
@@ -298,21 +356,29 @@ function init() {
     $('btn-cerrar').addEventListener('click', cerrarModal);
     $('btn-cerrar-x').addEventListener('click', cerrarModal);
     $('modal-lista').addEventListener('click', (e) => { if (e.target === e.currentTarget) cerrarModal(); });
+
     $('contenedor-lista').addEventListener('click', (e) => {
-        const btn = e.target.closest('[data-eliminar]');
-        if (btn) eliminarRegistro(btn.dataset.eliminar);
+        const btnEdit = e.target.closest('[data-editar]');
+        if (btnEdit) {
+            const item = registros.find((r) => r.id === btnEdit.dataset.editar);
+            if (item) iniciarEdicion(item);
+            return;
+        }
+        const btnElim = e.target.closest('[data-eliminar]');
+        if (btnElim) eliminarRegistro(btnElim.dataset.eliminar);
     });
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !$('modal-lista').classList.contains('hidden')) cerrarModal();
     });
 
-    cargarRegistros().catch(mostrarErrorCarga);   // una sola carga inicial (contador y resumen)
+    cargarRegistros().catch(mostrarErrorCarga);
 }
 
 function mostrarErrorCarga(err) {
     console.warn('No se pudo cargar la lista:', err);
 
-    const aviso = el('div', 'col-span-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 p-3 text-xs space-y-1');
+    const aviso = el('div', 'col-span-3 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 p-3 text-xs space-y-1');
     aviso.append(
         el('p', 'font-semibold', 'No se pudo leer la lista del Sheet'),
         el('p', 'break-words', `Motivo: ${err.message}`),
@@ -326,7 +392,6 @@ function mostrarErrorCarga(err) {
 
 init();
 
-// App instalable y con arranque offline (necesita HTTPS; Netlify lo da)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker:', err));
