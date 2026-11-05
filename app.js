@@ -2,7 +2,7 @@
 
 /* ============ Configuración ============ */
 const CONFIG = {
-    URL_SCRIPT: 'https://script.google.com/macros/s/AKfycbyCKgXEE_dRn3EEooUauztna5HDMYcBRl20sHTqKIkU7gs5qeDLDOuc8KPeL9vv7Kc/exec',
+    URL_SCRIPT: 'https://script.google.com/macros/s/AKfycbxPJsrnXQGZ69H-njZkuMk0mK6ENwYGWieGDP0UTiZpyrVW9FpQ3DjKrOpE2zLxER5I/exec',
     TOKEN: 'minimarket2026',   // tiene que ser igual al TOKEN de Code.gs
     DIAS_ALERTA: 30,               // días antes del vencimiento para marcar en naranja
     TOAST_MS: 3000,
@@ -49,6 +49,7 @@ function estadoVencimiento(iso) {
 /* ============ API (Apps Script) ============ */
 // Content-Type text/plain = "request simple": no hay preflight y se puede leer la respuesta.
 async function api(payload) {
+    if (!navigator.onLine) throw new Error('Sin conexión a internet');
     const res = await fetch(CONFIG.URL_SCRIPT, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -272,3 +273,10 @@ function mostrarErrorCarga(err) {
 }
 
 init();
+
+// App instalable y con arranque offline (necesita HTTPS; Netlify lo da)
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker:', err));
+    });
+}
